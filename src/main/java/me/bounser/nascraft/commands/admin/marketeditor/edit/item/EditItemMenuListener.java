@@ -89,6 +89,9 @@ public class EditItemMenuListener implements Listener {
 
             case 5:
                 new AnvilGUI.Builder()
+                        .mainThreadExecutor(command -> {
+                            me.bounser.nascraft.managers.scheduler.SchedulerManager.getInstance().runGlobal(command);
+                        })
                         .onClick((slot, stateSnapshot) -> {
                             EditorManager.getInstance().getEditItemMenuFromPlayer(player).setAlias(stateSnapshot.getText());
                             stateSnapshot.getPlayer().sendMessage(ChatColor.LIGHT_PURPLE + "Alias set correctly!");
@@ -161,6 +164,9 @@ public class EditItemMenuListener implements Listener {
             case 15:
 
                 new AnvilGUI.Builder()
+                        .mainThreadExecutor(command -> {
+                            me.bounser.nascraft.managers.scheduler.SchedulerManager.getInstance().runGlobal(command);
+                        })
                         .onClick((slot, stateSnapshot) -> {
 
                             String categoryReference = stateSnapshot.getText();
@@ -197,6 +203,9 @@ public class EditItemMenuListener implements Listener {
     public void openAnvil(Player player, String setupedCorrectly, String text, String title, String type) {
 
         new AnvilGUI.Builder()
+                .mainThreadExecutor(command -> {
+                    me.bounser.nascraft.managers.scheduler.SchedulerManager.getInstance().runGlobal(command);
+                })
                 .onClick((slot, stateSnapshot) -> {
                     if(slot != AnvilGUI.Slot.OUTPUT) {
                         return Collections.emptyList();

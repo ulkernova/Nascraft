@@ -67,6 +67,9 @@ public class MarketEditorInvListener implements Listener {
             case 46:
 
                 new AnvilGUI.Builder()
+                        .mainThreadExecutor(command -> {
+                            me.bounser.nascraft.managers.scheduler.SchedulerManager.getInstance().runGlobal(command);
+                        })
                         .onClick((slot, stateSnapshot) -> {
 
                             String identifier = stateSnapshot.getText();

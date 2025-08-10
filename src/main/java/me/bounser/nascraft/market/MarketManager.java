@@ -4,6 +4,9 @@ import de.tr7zw.changeme.nbtapi.NBT;
 import me.bounser.nascraft.Nascraft;
 import me.bounser.nascraft.chart.cpi.CPIInstant;
 import me.bounser.nascraft.database.DatabaseManager;
+import me.bounser.nascraft.database.commands.resources.DayInfo;
+import me.bounser.nascraft.database.commands.resources.NormalisedDate;
+import me.bounser.nascraft.database.commands.resources.Trade;
 import me.bounser.nascraft.formatter.Formatter;
 import me.bounser.nascraft.managers.DebtManager;
 import me.bounser.nascraft.managers.ImagesManager;
@@ -15,18 +18,15 @@ import me.bounser.nascraft.market.unit.Item;
 import me.bounser.nascraft.config.Config;
 import me.bounser.nascraft.market.unit.stats.Instant;
 import me.bounser.nascraft.portfolio.Portfolio;
-import me.bounser.nascraft.portfolio.PortfoliosManager;
-import me.bounser.nascraft.web.dto.CategoryDTO;
-import me.bounser.nascraft.web.dto.ItemDTO;
-import me.bounser.nascraft.web.dto.PortfolioDTO;
-import me.bounser.nascraft.web.dto.TimeSeriesDTO;
+import me.bounser.nascraft.web.dto.*;
 import org.bukkit.Bukkit;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
-import org.checkerframework.checker.units.qual.C;
 
 import java.awt.image.BufferedImage;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.*;
 
 public class MarketManager {
@@ -45,6 +45,8 @@ public class MarketManager {
     private int operationsLastHour = 0;
 
     private List<String> ignoredKeys = new ArrayList<>();
+
+    ZoneOffset offset = ZonedDateTime.now(ZoneId.systemDefault()).getOffset();
 
     private static MarketManager instance = null;
 
@@ -228,8 +230,18 @@ public class MarketManager {
         List<Item> items = new ArrayList<>(MarketManager.getInstance().getAllParentItems());
 
         List<Item> topGainers = new ArrayList<>();
+        
+        // Check if items list is empty
+        if (items.isEmpty()) {
+            return topGainers;
+        }
 
         for (int i = 1; i <= quantity ; i++) {
+            
+            // Check if there are still items to process
+            if (items.isEmpty()) {
+                break;
+            }
 
             Item imax = items.get(0);
             for (Item item : items) {
@@ -254,8 +266,18 @@ public class MarketManager {
         List<Item> items = new ArrayList<>(MarketManager.getInstance().getAllParentItems());
 
         List<Item> topDippers = new ArrayList<>();
+        
+        // Check if items list is empty
+        if (items.isEmpty()) {
+            return topDippers;
+        }
 
         for (int i = 1; i <= quantity ; i++) {
+            
+            // Check if there are still items to process
+            if (items.isEmpty()) {
+                break;
+            }
 
             Item imax = items.get(0);
             for (Item item : items) {
@@ -280,8 +302,18 @@ public class MarketManager {
         List<Item> items = new ArrayList<>(MarketManager.getInstance().getAllParentItems());
 
         List<Item> mostMoved = new ArrayList<>();
+        
+        // Check if items list is empty
+        if (items.isEmpty()) {
+            return mostMoved;
+        }
 
         for (int i = 1; i <= quantity ; i++) {
+            
+            // Check if there are still items to process
+            if (items.isEmpty()) {
+                break;
+            }
 
             Item imax = items.get(0);
             for (Item item : items) {
@@ -306,8 +338,18 @@ public class MarketManager {
         List<Item> items = new ArrayList<>(MarketManager.getInstance().getAllParentItems());
 
         List<Item> mostTraded = new ArrayList<>();
+        
+        // Check if items list is empty
+        if (items.isEmpty()) {
+            return mostTraded;
+        }
 
         for (int i = 1; i <= quantity ; i++) {
+            
+            // Check if there are still items to process
+            if (items.isEmpty()) {
+                break;
+            }
 
             Item imax = items.get(0);
             for (Item item : items) {
@@ -419,6 +461,11 @@ public class MarketManager {
                 numOfItems++;
             }
         }
+        
+        // Handle case when no items are included in CPI calculation
+        if (numOfItems == 0) {
+            return 100.0f; // Return base index value
+        }
 
         return (index/numOfItems)*100;
     }
@@ -449,7 +496,15 @@ public class MarketManager {
 
     public ItemDTO getPopularItem() {
 
-        Item item = getMostTraded(1).get(0);
+        List<Item> mostTraded = getMostTraded(1);
+        
+        // Check if there are any items
+        if (mostTraded.isEmpty()) {
+            // Return a default/empty ItemDTO
+            return new ItemDTO("", "No items available", 0.0, 0.0, 0.0, 0, 0.0);
+        }
+        
+        Item item = mostTraded.get(0);
 
         return new ItemDTO(
                 item.getIdentifier(),
@@ -472,7 +527,7 @@ public class MarketManager {
 
             timeSeries.add(
                     new TimeSeriesDTO(
-                            instant.getLocalDateTime().toEpochSecond(ZoneOffset.UTC),
+                            instant.getLocalDateTime().toEpochSecond(offset),
                             instant.getIndexValue()
                             )
             );
@@ -481,9 +536,46 @@ public class MarketManager {
         return timeSeries;
     }
 
-    public List<TimeSeriesDTO> getItemTimeSeries(String identifier) {
+    public List<TimeSeriesDTO> getAllTaxesCollected() {
 
         List<TimeSeriesDTO> timeSeries = new ArrayList<>();
+
+        List<DayInfo> dayInfos = DatabaseManager.get().getDatabase().getDayInfos();
+
+        for (DayInfo dayInfo : dayInfos) {
+            long timestamp = dayInfo.getTime().toEpochSecond(offset);
+
+            timeSeries.add(new TimeSeriesDTO(timestamp, dayInfo.getTax()));
+
+        }
+        return timeSeries;
+    }
+
+    public List<TimeSeriesDTO> getMoneySupply() {
+
+        Map<Integer, Double> values = DatabaseManager.get().getDatabase().getMoneySupplyHistory();
+
+        List<TimeSeriesDTO> timeSeries = new ArrayList<>();
+
+        for (Integer day : values.keySet()) {
+
+            Date dateForDay = NormalisedDate.getDateFromDay(day);
+            long timestamp = dateForDay.toInstant().getEpochSecond();
+
+            timeSeries.add(
+                    new TimeSeriesDTO(
+                            timestamp,
+                            values.get(day)
+                    )
+            );
+        }
+
+        return timeSeries;
+    }
+
+    public List<ItemTimeSeriesDTO> getItemTimeSeries(String identifier) {
+
+        List<ItemTimeSeriesDTO> timeSeries = new ArrayList<>();
         Set<Long> seenTimestamps = new HashSet<>();
 
         Item item = getItem(identifier);
@@ -492,10 +584,50 @@ public class MarketManager {
         List<Instant> instants = DatabaseManager.get().getDatabase().getAllPrices(item);
 
         for (Instant instant : instants) {
-            long timestamp = instant.getLocalDateTime().toEpochSecond(ZoneOffset.UTC);
+            long timestamp = instant.getLocalDateTime().toEpochSecond(offset);
             if (!seenTimestamps.contains(timestamp) && instant.getPrice() != 0) {
                 seenTimestamps.add(timestamp);
-                timeSeries.add(new TimeSeriesDTO(timestamp, instant.getPrice()));
+                timeSeries.add(new ItemTimeSeriesDTO(timestamp, instant.getPrice(), instant.getVolume()));
+            }
+        }
+        return timeSeries;
+    }
+
+    public List<ItemTimeSeriesDTO> getItemTimeSeriesDay(String identifier) {
+
+        List<ItemTimeSeriesDTO> timeSeries = new ArrayList<>();
+        Set<Long> seenTimestamps = new HashSet<>();
+
+        Item item = getItem(identifier);
+        if (item == null) return null;
+
+        List<Instant> instants = DatabaseManager.get().getDatabase().getDayPrices(item);
+
+        for (Instant instant : instants) {
+            long timestamp = instant.getLocalDateTime().toEpochSecond(offset);
+            if (!seenTimestamps.contains(timestamp) && instant.getPrice() != 0) {
+                seenTimestamps.add(timestamp);
+                timeSeries.add(new ItemTimeSeriesDTO(timestamp, instant.getPrice(), instant.getVolume()));
+            }
+        }
+        return timeSeries;
+    }
+
+    public List<ItemTimeSeriesDTO> getItemTimeSeriesMonth(String identifier) {
+
+        List<ItemTimeSeriesDTO> timeSeries = new ArrayList<>();
+        Set<Long> seenTimestamps = new HashSet<>();
+
+        Item item = getItem(identifier);
+        if (item == null) return null;
+
+        List<Instant> instants = DatabaseManager.get().getDatabase().getMonthPrices(item);
+
+        for (Instant instant : instants) {
+            long timestamp = instant.getLocalDateTime().toEpochSecond(offset);
+            if (!seenTimestamps.contains(timestamp) && instant.getPrice() != 0) {
+                seenTimestamps.add(timestamp);
+                timeSeries.add(new ItemTimeSeriesDTO(timestamp, instant.getPrice(), instant.getVolume()));
             }
         }
         return timeSeries;
@@ -535,6 +667,96 @@ public class MarketManager {
             );
         }
         return portfolioDTO;
+    }
+
+    public List<TransactionDTO> getHistoryPlayer(String playerName) {
+
+        List<TransactionDTO> transactions = new ArrayList<>();
+
+        UUID uuid = DatabaseManager.get().getDatabase().getUUIDbyName(playerName);
+        if (uuid == null) return transactions;
+
+        List<Trade> trades = DatabaseManager.get().getDatabase().retrieveTrades(uuid,0, 500);
+
+        for (Trade trade : trades) {
+
+            if (trade.getItem() != null)
+                transactions.add(
+                        new TransactionDTO(
+                                trade.getItem().getIdentifier(),
+                                trade.getAmount(),
+                                trade.isBuy() ? -trade.getValue() : trade.getValue(),
+                                trade.getDate().toEpochSecond(offset)
+                        )
+                );
+        }
+        return transactions;
+    }
+
+    public PlayerStatsDTO getPlayerStats(UUID uuid, String playerName) {
+        double totalSpent = 0;
+        double totalEarned = 0;
+        int itemsBought = 0;
+        int itemsSold = 0;
+        
+        // Calculate player statistics from trades
+        List<Trade> trades = DatabaseManager.get().getDatabase().retrieveTrades(uuid, 0, Integer.MAX_VALUE);
+        for (Trade trade : trades) {
+            if (trade.getAmount() > 0) {
+                // Buy transaction
+                totalSpent += trade.getValue() * trade.getAmount();
+                itemsBought += trade.getAmount();
+            } else {
+                // Sell transaction
+                totalEarned += trade.getValue() * Math.abs(trade.getAmount());
+                itemsSold += Math.abs(trade.getAmount());
+            }
+        }
+        
+        // Create PlayerStatsDTO with UUID and player name
+        return new PlayerStatsDTO(uuid, playerName, totalSpent, totalEarned, itemsBought, itemsSold);
+    }
+
+    public List<DetailedTransactionDTO> getLastTransactions() {
+
+        List<Trade> trades = DatabaseManager.get().getDatabase().retrieveTrades(0, 10);
+
+        List<DetailedTransactionDTO> transactions = new ArrayList<>();
+
+        for (Trade trade : trades) {
+
+            if (trade.getItem() != null)
+                transactions.add(
+                        new DetailedTransactionDTO(
+                                DatabaseManager.get().getDatabase().getNameByUUID(trade.getUuid()),
+                                trade.getItem().getIdentifier(),
+                                (trade.isBuy() ? 1 : -1) * trade.getAmount(),
+                                trade.getDate().toEpochSecond(offset)
+                        )
+                );
+        }
+
+        return transactions;
+    }
+
+    public DebtDTO getDebtPlayer(String playerName) {
+
+        UUID uuid = DatabaseManager.get().getDatabase().getUUIDbyName(playerName);
+        if (uuid == null) return null;
+
+        DebtManager debt = DebtManager.getInstance();
+
+        DebtDTO debtDTO = new DebtDTO(
+                debt.getDebtOfPlayer(uuid),
+                debt.getNextPayment(uuid),
+                debt.getLifeTimeInterests(uuid),
+                debt.getMaximumLoan(uuid),
+                Config.getInstance().getLoansDailyInterest(),
+                Config.getInstance().getLoansMinimumInterest(),
+                debt.getNextPaymentTime().toString()
+        );
+
+        return debtDTO;
     }
 
 }

@@ -19,6 +19,7 @@ import xyz.xenondevs.inventoryaccess.map.MapPatch;
 import xyz.xenondevs.invui.gui.Gui;
 import xyz.xenondevs.invui.gui.structure.Structure;
 import xyz.xenondevs.invui.window.CartographyWindow;
+import me.bounser.nascraft.managers.scheduler.SchedulerManager;
 
 import java.awt.image.BufferedImage;
 import java.util.Arrays;
@@ -69,19 +70,15 @@ public class InfoPortfolio implements MenuPage {
 
                 PortfolioInventory.getInstance().updatePortfolioInventory(player);
 
-                Bukkit.getScheduler().runTaskLater(Nascraft.getInstance(), new Runnable() {
-                    @Override
-                    public void run() {
-                        Component title = MiniMessage.miniMessage().deserialize(Lang.get().message(Message.PORTFOLIO_TITLE));
+                SchedulerManager.getInstance().scheduleGlobalDelayed(() -> {
+                        Component title2 = MiniMessage.miniMessage().deserialize(Lang.get().message(Message.PORTFOLIO_TITLE));
 
-                        Inventory inventory = Bukkit.createInventory(player, 45, BukkitComponentSerializer.legacy().serialize(title));
-                        player.openInventory(inventory);
+                        Inventory inventory2 = Bukkit.createInventory(player, 45, BukkitComponentSerializer.legacy().serialize(title2));
+                        player.openInventory(inventory2);
                         player.setMetadata("NascraftPortfolio", new FixedMetadataValue(Nascraft.getInstance(),false));
 
                         PortfolioInventory.getInstance().updatePortfolioInventory(player);
-
-                    }
-                }, 1);
+                }, 1L);
             }
         }));
 

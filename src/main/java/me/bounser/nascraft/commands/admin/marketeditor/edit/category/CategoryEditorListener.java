@@ -61,6 +61,9 @@ public class CategoryEditorListener implements Listener {
 
             case 13:
                 new AnvilGUI.Builder()
+                        .mainThreadExecutor(command -> {
+                            me.bounser.nascraft.managers.scheduler.SchedulerManager.getInstance().runGlobal(command);
+                        })
                         .onClick((slot, stateSnapshot) -> {
 
                             String categoryName = stateSnapshot.getText();

@@ -100,8 +100,10 @@ public class PortfolioInventory implements Listener {
             if (item == null) return;
 
             if (DebtManager.getInstance().getDebtOfPlayer(player.getUniqueId()) != 0) {
-                Lang.get().message(player, Message.PORTFOLIO_DEBT_PORTFOLIO_LOCKED);
-                return;
+                if (!Config.getInstance().getLoansAllowPortfolioRepayment()) {
+                    Lang.get().message(player, Message.PORTFOLIO_DEBT_PORTFOLIO_LOCKED);
+                    return;
+                }
             }
 
             int quantity = portfolio.getContent().get(item);

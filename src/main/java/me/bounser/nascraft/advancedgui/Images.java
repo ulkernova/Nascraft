@@ -6,6 +6,7 @@ import me.leoko.advancedgui.manager.ResourceManager;
 import org.bukkit.Material;
 
 import javax.imageio.ImageIO;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStream;
@@ -39,14 +40,14 @@ public class Images {
         BufferedImage image = null;
         try {
             InputStream input = Nascraft.getInstance().getResource("1-21-4-materials/minecraft_" + material.toString().toLowerCase() + ".png");
-            assert input != null;
-            image = ImageIO.read(input);
-        } catch (IOException e) {
-            Nascraft.getInstance().getLogger().info("Unable to read image: " + material.toString().toLowerCase() + ".png");
-            e.printStackTrace();
+            if (input != null) {
+                image = ImageIO.read(input);
+            }
+        } catch (IOException ignored) { }
+        if (image == null) {
+            image = generatePlaceholder(material);
         }
         images.put(material, image);
-
         return image;
     }
 
@@ -61,6 +62,28 @@ public class Images {
                 if (img1.getRGB(x, y) != img2.getRGB(x, y)) return false;
 
         return true;
+    }
+
+    private static BufferedImage generatePlaceholder(Material material) {
+        int size = 32;
+        BufferedImage placeholder = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2d = placeholder.createGraphics();
+        try {
+            int hash = Math.abs(material.name().hashCode());
+            Color bg = new Color((hash >> 16) & 0x7F, (hash >> 8) & 0x7F, hash & 0x7F, 255);
+            g2d.setColor(bg);
+            g2d.fillRect(0, 0, size, size);
+            g2d.setColor(Color.WHITE);
+            g2d.setFont(new Font("SansSerif", Font.BOLD, 12));
+            String txt = material.name().substring(0, Math.min(2, material.name().length()));
+            FontMetrics fm = g2d.getFontMetrics();
+            int textWidth = fm.stringWidth(txt);
+            int textAscent = fm.getAscent();
+            g2d.drawString(txt, (size - textWidth) / 2, (size + textAscent) / 2 - 4);
+        } finally {
+            g2d.dispose();
+        }
+        return placeholder;
     }
 
 }

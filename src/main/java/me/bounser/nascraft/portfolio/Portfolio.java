@@ -8,6 +8,7 @@ import me.bounser.nascraft.managers.currencies.CurrenciesManager;
 import me.bounser.nascraft.managers.currencies.Currency;
 import me.bounser.nascraft.market.unit.Item;
 import org.bukkit.Bukkit;
+import me.bounser.nascraft.managers.scheduler.SchedulerManager;
 import org.bukkit.entity.Player;
 
 import java.util.HashMap;
@@ -138,7 +139,7 @@ public class Portfolio {
 
     public void sellAll(Consumer<Double> callback) {
 
-        Bukkit.getScheduler().runTask(Nascraft.getInstance(), () -> {
+        SchedulerManager.getInstance().runGlobal(() -> {
             
             double value = 0;
 
@@ -165,7 +166,7 @@ public class Portfolio {
 
     public void liquidatePerCurrency(Currency currency, Consumer<Double> callback) {
 
-        Bukkit.getScheduler().runTask(Nascraft.getInstance(), () -> {
+        SchedulerManager.getInstance().runGlobal(() -> {
 
             double value = 0;
 

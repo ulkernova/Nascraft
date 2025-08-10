@@ -5,6 +5,7 @@ import me.bounser.nascraft.config.Config;
 import me.bounser.nascraft.database.DatabaseManager;
 import me.bounser.nascraft.market.unit.Item;
 import org.bukkit.Bukkit;
+import me.bounser.nascraft.managers.scheduler.SchedulerManager;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -31,8 +32,8 @@ public class LimitOrdersManager {
 
         durations = Config.getInstance().getDurations();
 
-        Bukkit.getScheduler().runTaskTimer(Nascraft.getInstance(),
-                this::checkOrders, 200, 20L * Config.getInstance().getCheckingPeriod());
+        SchedulerManager.getInstance().scheduleGlobalRepeating(
+                this::checkOrders, 200L, 20L * Config.getInstance().getCheckingPeriod());
     }
 
     public List<Duration> getDurationOptions() {

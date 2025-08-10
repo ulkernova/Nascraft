@@ -11,6 +11,7 @@ import me.bounser.nascraft.managers.currencies.Currency;
 import me.bounser.nascraft.market.MarketManager;
 import me.bounser.nascraft.market.unit.Item;
 import org.bukkit.Bukkit;
+import me.bounser.nascraft.managers.scheduler.SchedulerManager;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.block.Barrel;
@@ -273,7 +274,7 @@ public class WandListener implements Listener {
                     players.put(event.getPlayer(), Instant.now());
                     onCooldown.put(wand, players);
 
-                    Bukkit.getScheduler().runTaskLaterAsynchronously(Nascraft.getInstance(), () -> {
+                    SchedulerManager.getInstance().scheduleAsyncDelayed(() -> {
                         HashMap<Player, Instant> players1 = onCooldown.get(wand);
                         players1.remove(event.getPlayer());
                         onCooldown.put(wand, players1);

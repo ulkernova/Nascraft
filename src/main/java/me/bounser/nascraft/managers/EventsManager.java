@@ -22,5 +22,9 @@ public class EventsManager implements Listener {
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
         PortfoliosManager.getInstance().savePortfolioOfPlayer(event.getPlayer());
+
+        // These methods are defined in the Database interface but not implemented yet
+        // DatabaseManager.get().getDatabase().updateBalance(event.getPlayer().getUniqueId());
+        // DatabaseManager.get().getDatabase().saveOrUpdatePlayerStats(event.getPlayer().getUniqueId());
     }
 }

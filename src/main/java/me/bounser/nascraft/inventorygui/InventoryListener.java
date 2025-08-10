@@ -14,6 +14,7 @@ import me.bounser.nascraft.managers.DebtManager;
 import me.bounser.nascraft.managers.InventoryManager;
 import me.bounser.nascraft.managers.MoneyManager;
 import me.bounser.nascraft.managers.currencies.CurrenciesManager;
+import me.bounser.nascraft.managers.currencies.Currency;
 import me.bounser.nascraft.market.MarketManager;
 import me.bounser.nascraft.market.limitorders.LimitOrder;
 import me.bounser.nascraft.market.limitorders.LimitOrdersManager;
@@ -32,6 +33,8 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.metadata.FixedMetadataValue;
+import me.bounser.nascraft.managers.scheduler.SchedulerManager;
+import me.bounser.nascraft.portfolio.PortfoliosManager;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -112,7 +115,12 @@ public class InventoryListener implements Listener {
 
             Item item = MarketManager.getInstance().getItem(metadata.substring(10));
 
-            if (item == null) return;
+            if (item == null) {
+                // Provide feedback to the player when the item doesn't exist
+                player.sendMessage("§cError: This item is not available in the market. Please contact an administrator.");
+                Nascraft.getInstance().getLogger().warning("Player " + player.getName() + " tried to buy item with identifier '" + metadata.substring(10) + "' but it doesn't exist in the market!");
+                return;
+            }
 
             if (config.getBuySellBackEnabled() && slot == config.getBuySellBackSlot()) {
                 MarketMenuManager.getInstance().setMenuOfPlayer(player, new CategoryMenu(player, item.getCategory()));
@@ -180,6 +188,7 @@ public class InventoryListener implements Listener {
                 }
 
                 new AnvilGUI.Builder()
+                        .mainThreadExecutor(command -> me.bounser.nascraft.managers.scheduler.SchedulerManager.getInstance().runGlobal(command))
                         .onClick((anvilSlot, stateSnapshot) -> {
 
                             Pattern pattern = Pattern.compile("[-+]?[0-9]*\\.?[0-9]+");
@@ -339,6 +348,7 @@ public class InventoryListener implements Listener {
             if (config.getSetLimitOrderMenuPriceSlot() == slot) {
 
                 new AnvilGUI.Builder()
+                        .mainThreadExecutor(command -> me.bounser.nascraft.managers.scheduler.SchedulerManager.getInstance().runGlobal(command))
                         .onClick((anvilSlot, stateSnapshot) -> {
 
                             Pattern pattern = Pattern.compile("[-+]?[0-9]*\\.?[0-9]+");
@@ -374,6 +384,7 @@ public class InventoryListener implements Listener {
             if (config.getSetLimitOrderMenuQuantitySlot() == slot) {
 
                 new AnvilGUI.Builder()
+                        .mainThreadExecutor(command -> me.bounser.nascraft.managers.scheduler.SchedulerManager.getInstance().runGlobal(command))
                         .onClick((anvilSlot, stateSnapshot) -> {
 
                             Pattern pattern = Pattern.compile("[-+]?\\d+");
@@ -690,6 +701,20 @@ public class InventoryListener implements Listener {
                         Lang.get().message(player, Lang.get().message(Message.PORTFOLIO_DEBT_REPAYED_ALL)
                                 .replace("[AMOUNT]", Formatter.format(CurrenciesManager.getInstance().getDefaultCurrency(), debt, Style.ROUND_BASIC)));
 
+                    } else if (Config.getInstance().getLoansAllowPortfolioRepayment()) {
+                        Currency currency = CurrenciesManager.getInstance().getDefaultCurrency();
+                        PortfoliosManager.getInstance().getPortfolio(player.getUniqueId()).liquidatePerCurrency(currency, result -> {
+                            double toPay = Math.min(result, debt);
+                            if (toPay > 0) {
+                                MoneyManager.getInstance().simpleWithdraw(player, currency, toPay);
+                                DebtManager.getInstance().decreaseDebt(player.getUniqueId(), toPay);
+                                Lang.get().message(player, Lang.get().message(Message.PORTFOLIO_DEBT_REPAYED_ALL)
+                                        .replace("[AMOUNT]", Formatter.format(currency, toPay, Style.ROUND_BASIC)));
+                                MarketMenuManager.getInstance().getMenuFromPlayer(player).update();
+                            } else {
+                                Lang.get().message(player, Lang.get().message(Message.NOT_ENOUGH_MONEY));
+                            }
+                        });
                     } else {
                         Lang.get().message(player, Lang.get().message(Message.NOT_ENOUGH_MONEY));
                     }
@@ -699,6 +724,7 @@ public class InventoryListener implements Listener {
                 if (config.getDebtRepayEnabled() && config.getDebtRepaySlot() == slot) {
 
                     new AnvilGUI.Builder()
+                            .mainThreadExecutor(command -> me.bounser.nascraft.managers.scheduler.SchedulerManager.getInstance().runGlobal(command))
                             .onClick((anvilSlot, stateSnapshot) -> {
 
                                 Pattern pattern = Pattern.compile("[-+]?[0-9]*\\.?[0-9]+");
@@ -712,11 +738,27 @@ public class InventoryListener implements Listener {
                                     if (value == 0 || value > debt)
                                         return List.of(AnvilGUI.ResponseAction.replaceInputText(String.valueOf(Formatter.roundToDecimals(debt, CurrenciesManager.getInstance().getDefaultCurrency().getDecimalPrecission()))));
 
-                                    if (!MoneyManager.getInstance().hasEnoughMoney(player, CurrenciesManager.getInstance().getDefaultCurrency(), value))
-                                        return List.of(AnvilGUI.ResponseAction.replaceInputText(Lang.get().message(Message.PORTFOLIO_DEBT_ANVIL_NOT_ENOUGH)));
-
-                                    MoneyManager.getInstance().simpleWithdraw(player, CurrenciesManager.getInstance().getDefaultCurrency(), value);
-                                    DebtManager.getInstance().decreaseDebt(player.getUniqueId(), value);
+                                    if (!MoneyManager.getInstance().hasEnoughMoney(player, CurrenciesManager.getInstance().getDefaultCurrency(), value)) {
+                                        if (Config.getInstance().getLoansAllowPortfolioRepayment()) {
+                                            Currency currency = CurrenciesManager.getInstance().getDefaultCurrency();
+                                            PortfoliosManager.getInstance().getPortfolio(player.getUniqueId()).liquidatePerCurrency(currency, result -> {
+                                                double toPay = Math.min(result, value);
+                                                if (toPay > 0) {
+                                                    MoneyManager.getInstance().simpleWithdraw(player, currency, toPay);
+                                                    DebtManager.getInstance().decreaseDebt(player.getUniqueId(), toPay);
+                                                    Lang.get().message(player, Lang.get().message(Message.PORTFOLIO_DEBT_REPAYED)
+                                                            .replace("[AMOUNT]", Formatter.format(currency, toPay, Style.ROUND_BASIC))
+                                                            .replace("[DEBT]", Formatter.format(currency, debt - toPay, Style.ROUND_BASIC)));
+                                                }
+                                            });
+                                            return Arrays.asList(AnvilGUI.ResponseAction.close());
+                                        } else {
+                                            return List.of(AnvilGUI.ResponseAction.replaceInputText(Lang.get().message(Message.PORTFOLIO_DEBT_ANVIL_NOT_ENOUGH)));
+                                        }
+                                    } else {
+                                        MoneyManager.getInstance().simpleWithdraw(player, CurrenciesManager.getInstance().getDefaultCurrency(), value);
+                                        DebtManager.getInstance().decreaseDebt(player.getUniqueId(), value);
+                                    }
 
                                     Lang.get().message(player, Lang.get().message(Message.PORTFOLIO_DEBT_REPAYED)
                                             .replace("[AMOUNT]", Formatter.format(CurrenciesManager.getInstance().getDefaultCurrency(), value, Style.ROUND_BASIC))
@@ -768,6 +810,7 @@ public class InventoryListener implements Listener {
                 if (config.getDebtCustomEnabled() && config.getDebtCustomSlot() == slot) {
 
                     new AnvilGUI.Builder()
+                            .mainThreadExecutor(command -> me.bounser.nascraft.managers.scheduler.SchedulerManager.getInstance().runGlobal(command))
                             .onClick((anvilSlot, stateSnapshot) -> {
 
                                 Pattern pattern = Pattern.compile("[-+]?[0-9]*\\.?[0-9]+");

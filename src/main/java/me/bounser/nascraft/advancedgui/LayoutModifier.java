@@ -292,13 +292,10 @@ public class LayoutModifier implements LayoutExtension {
                     updateButtonPrice(player, interaction);
                     updateChilds(player, interaction.getComponentTree());
 
-                    Bukkit.getScheduler().runTaskLaterAsynchronously(Nascraft.getInstance(), new Runnable() {
-                        @Override
-                        public void run() {
-                            interaction.getComponentTree().locate("1tprP7QZ").setHidden(true);
-                            interaction.getComponentTree().locate("J4axQDKl", GifComponent.class).setFrame(0);
-                        }
-                    }, Math.round(25 + random()*60));
+                    me.bounser.nascraft.managers.scheduler.SchedulerManager.getInstance().scheduleAsyncDelayed(() -> {
+                        interaction.getComponentTree().locate("1tprP7QZ").setHidden(true);
+                        interaction.getComponentTree().locate("J4axQDKl", GifComponent.class).setFrame(0);
+                    }, Math.round(25 + (float)random()*60));
 
                 });
             }
@@ -345,13 +342,10 @@ public class LayoutModifier implements LayoutExtension {
                 updateButtonPrice(player, interaction);
                 updateChilds(player, interaction.getComponentTree());
 
-                Bukkit.getScheduler().runTaskLaterAsynchronously(Nascraft.getInstance(), new Runnable() {
-                    @Override
-                    public void run() {
-                        interaction.getComponentTree().locate("1tprP7QZ").setHidden(true);
-                        interaction.getComponentTree().locate("J4axQDKl", GifComponent.class).setFrame(0);
-                    }
-                }, Math.round(25 + random()*60));
+                me.bounser.nascraft.managers.scheduler.SchedulerManager.getInstance().scheduleAsyncDelayed(() -> {
+                    interaction.getComponentTree().locate("1tprP7QZ").setHidden(true);
+                    interaction.getComponentTree().locate("J4axQDKl", GifComponent.class).setFrame(0);
+                }, Math.round(25 + (float)random()*60));
             });
         } else {
             icTree.locate("trend1", GroupComponent.class).setHidden(true);
@@ -391,13 +385,10 @@ public class LayoutModifier implements LayoutExtension {
                 updateButtonPrice(player, interaction);
                 updateChilds(player, interaction.getComponentTree());
 
-                Bukkit.getScheduler().runTaskLaterAsynchronously(Nascraft.getInstance(), new Runnable() {
-                    @Override
-                    public void run() {
-                        interaction.getComponentTree().locate("1tprP7QZ").setHidden(true);
-                        interaction.getComponentTree().locate("J4axQDKl", GifComponent.class).setFrame(0);
-                    }
-                }, Math.round(25 + random()*60));
+                me.bounser.nascraft.managers.scheduler.SchedulerManager.getInstance().scheduleAsyncDelayed(() -> {
+                    interaction.getComponentTree().locate("1tprP7QZ").setHidden(true);
+                    interaction.getComponentTree().locate("J4axQDKl", GifComponent.class).setFrame(0);
+                }, Math.round(25 + (float)random()*60));
             });
 
             float fvar = RoundUtils.roundToOne((float) (-100 + 100*(imax.getPrice().getValue()/imax.getPrice().getValueAnHourAgo())));

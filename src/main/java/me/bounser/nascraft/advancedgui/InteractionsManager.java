@@ -6,6 +6,7 @@ import me.bounser.nascraft.market.MarketManager;
 import me.bounser.nascraft.market.resources.Category;
 import me.bounser.nascraft.market.unit.Item;
 import org.bukkit.Bukkit;
+import me.bounser.nascraft.managers.scheduler.SchedulerManager;
 import org.bukkit.entity.Player;
 
 import java.util.*;
@@ -77,11 +78,8 @@ public class InteractionsManager {
         if (!playersOnCooldown.contains(player)) {
             playersOnCooldown.add(player);
 
-            Bukkit.getScheduler().runTaskLaterAsynchronously(Nascraft.getInstance(), () -> {
-
-                if (playersOnCooldown.contains(player))
-                    playersOnCooldown.remove(player);
-
+            SchedulerManager.getInstance().scheduleAsyncDelayed(() -> {
+                if (playersOnCooldown.contains(player)) playersOnCooldown.remove(player);
             }, (long) (Config.getInstance().getLayoutCooldown() * 20.0));
         }
     }

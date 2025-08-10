@@ -10,6 +10,7 @@ import me.bounser.nascraft.database.sqlite.SQLite;
 import me.bounser.nascraft.discord.DiscordBot;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+import me.bounser.nascraft.managers.scheduler.SchedulerManager;
 
 import java.util.HashMap;
 import java.util.Random;
@@ -168,7 +169,7 @@ public class LinkManager {
                 });
 
                 if (player.getOpenInventory().getTitle().equals(Lang.get().message(Message.PORTFOLIO_TITLE)))
-                    Bukkit.getScheduler().runTask(Nascraft.getInstance(), player::closeInventory);
+                    SchedulerManager.getInstance().runGlobal(() -> player.closeInventory());
         }
 
         return true;

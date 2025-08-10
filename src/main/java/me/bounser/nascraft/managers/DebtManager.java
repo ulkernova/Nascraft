@@ -7,6 +7,7 @@ import me.bounser.nascraft.config.lang.Message;
 import me.bounser.nascraft.database.DatabaseManager;
 import me.bounser.nascraft.formatter.Formatter;
 import me.bounser.nascraft.formatter.Style;
+import me.bounser.nascraft.managers.scheduler.SchedulerManager;
 import me.bounser.nascraft.managers.currencies.CurrenciesManager;
 import me.bounser.nascraft.managers.currencies.Currency;
 import me.bounser.nascraft.market.unit.Item;
@@ -17,6 +18,7 @@ import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.UUID;
@@ -35,7 +37,7 @@ public class DebtManager {
 
     public void checkMargins() {
 
-        Bukkit.getScheduler().runTaskTimer(Nascraft.getInstance(),
+        SchedulerManager.getInstance().scheduleGlobalRepeating(
                 () -> {
 
                     HashMap<UUID, Double> debtors = DatabaseManager.get().getDatabase().getUUIDAndDebt();
@@ -57,13 +59,12 @@ public class DebtManager {
                             }
                         }
                     }
-
-                }, 30*20, 20L * Config.getInstance().getMarginCheckingPeriod());
+                }, 30 * 20L, 20L * Config.getInstance().getMarginCheckingPeriod());
     }
 
     public void interestCollector() {
 
-        Bukkit.getScheduler().runTaskTimer(Nascraft.getInstance(),
+        SchedulerManager.getInstance().scheduleGlobalRepeating(
                 () -> {
 
                     HashMap<UUID, Double> debtors = DatabaseManager.get().getDatabase().getUUIDAndDebt();
@@ -93,8 +94,20 @@ public class DebtManager {
                                         .replace("[AMOUNT]", Formatter.format(CurrenciesManager.getInstance().getDefaultCurrency(), interest, Style.ROUND_BASIC)));
                         }
                     }
+                }, calculateInitialDelay(LocalTime.now(), Config.getInstance().getInterestPaymentHour()) * 20L, TimeUnit.DAYS.toSeconds(1) * 20L);
+    }
 
-                }, calculateInitialDelay(LocalTime.now(), Config.getInstance().getInterestPaymentHour())*20, TimeUnit.DAYS.toSeconds(1)*20);
+    public double getNextPayment(UUID uuid) {
+
+        HashMap<UUID, Double> debtors = DatabaseManager.get().getDatabase().getUUIDAndDebt();
+
+        if (!debtors.containsKey(uuid)) return 0;
+
+        return Math.max(debtors.get(uuid) * Config.getInstance().getLoansDailyInterest(), Config.getInstance().getLoansMinimumInterest());
+    }
+
+    public LocalTime getNextPaymentTime() {
+        return Config.getInstance().getInterestPaymentHour();
     }
 
     private static long calculateInitialDelay(LocalTime currentTime, LocalTime targetTime) {

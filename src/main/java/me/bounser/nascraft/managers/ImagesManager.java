@@ -5,6 +5,7 @@ import me.bounser.nascraft.config.Config;
 import org.bukkit.configuration.file.FileConfiguration;
 
 import javax.imageio.ImageIO;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -47,16 +48,12 @@ public class ImagesManager {
             try (InputStream input = Nascraft.getInstance().getResource(imagePath)) {
                 if (input != null) {
                     image = ImageIO.read(input);
-                } else {
-                    Nascraft.getInstance().getLogger().info("Unable to find image: " + imageName);
                 }
-            } catch (IOException e) {
-                Nascraft.getInstance().getLogger().info("Unable to read image: " + imageName);
-            } catch (IllegalArgumentException e) {
-                Nascraft.getInstance().getLogger().info("Invalid argument for image: " + imageName);
+            } catch (IOException ignored) {
+            } catch (IllegalArgumentException ignored) {
             }
 
-            return image;
+            return image != null ? image : generatePlaceholder(identifier);
         }
 
         imageName = identifier.replaceAll("\\d", "").toLowerCase() + ".png";
@@ -65,16 +62,12 @@ public class ImagesManager {
         try (InputStream input = Nascraft.getInstance().getResource(imagePath)) {
             if (input != null) {
                 image = ImageIO.read(input);
-            } else {
-                Nascraft.getInstance().getLogger().info("Unable to find image: " + imageName);
             }
-        } catch (IOException e) {
-            Nascraft.getInstance().getLogger().info("Unable to read image: " + imageName);
-        } catch (IllegalArgumentException e) {
-            Nascraft.getInstance().getLogger().info("Invalid argument for image: " + imageName);
+        } catch (IOException ignored) {
+        } catch (IllegalArgumentException ignored) {
         }
 
-        return image;
+        return image != null ? image : generatePlaceholder(identifier);
     }
 
     public static byte[] getBytesOfImage(BufferedImage image) {
@@ -85,6 +78,28 @@ public class ImagesManager {
             throw new RuntimeException(e);
         }
         return baosBalance.toByteArray();
+    }
+
+    private BufferedImage generatePlaceholder(String identifier) {
+        int size = 32;
+        BufferedImage placeholder = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2d = placeholder.createGraphics();
+        try {
+            int hash = Math.abs(identifier.hashCode());
+            Color bg = new Color((hash >> 16) & 0x7F, (hash >> 8) & 0x7F, hash & 0x7F, 255);
+            g2d.setColor(bg);
+            g2d.fillRect(0, 0, size, size);
+            g2d.setColor(Color.WHITE);
+            g2d.setFont(new Font("SansSerif", Font.BOLD, 14));
+            String letter = identifier.isEmpty() ? "?" : String.valueOf(Character.toUpperCase(identifier.charAt(0)));
+            FontMetrics fm = g2d.getFontMetrics();
+            int textWidth = fm.stringWidth(letter);
+            int textAscent = fm.getAscent();
+            g2d.drawString(letter, (size - textWidth) / 2, (size + textAscent) / 2 - 4);
+        } finally {
+            g2d.dispose();
+        }
+        return placeholder;
     }
 
 }
